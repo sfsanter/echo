@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Talk to me Echo — projection</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    body.fullscreen { cursor: none; }
+    #hint {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #888; font: 24px "Times New Roman", Times, serif; text-align: center; pointer-events: none;
+    }
+    body.fullscreen #hint { display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="hint">Click to go full screen</div>
+  <script>
+    const canvas = document.getElementById('c');
+
+    document.addEventListener('click', () => {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+    });
+    document.addEventListener('fullscreenchange', () => {
+      document.body.classList.toggle('fullscreen', !!document.fullscreenElement);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (window.opener && window.opener.app) window.opener.app.handleKey(e);
+    });
+
+    function loop() {
+      const app = window.opener && window.opener.app;
+      if (app) app.drawProjection(canvas);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

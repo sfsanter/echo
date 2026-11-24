@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Talk to me Echo — for Xinbei Wang</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="page">
+
+  <h1>Talk to me Echo</h1>
+  <p class="subtitle">for Xinbei Wang</p>
+  <p class="status-line">Status: <b id="status">Stopped</b> <span id="warning" class="warning" hidden></span></p>
+
+  <h2>1. Source</h2>
+  <table class="form">
+    <tr><td>Camera</td><td><select id="videoDevice"></select></td></tr>
+    <tr><td>Sound</td><td><select id="audioDevice"></select></td></tr>
+    <tr><td></td><td><button id="start">Start</button> <span id="inputInfo" class="small"></span></td></tr>
+    <tr>
+      <td>Level</td>
+      <td>
+        <div class="meter"><div id="meterBar"></div><div id="meterPeak"></div><div id="meterThreshold"></div></div>
+        <span id="levelValue" class="small">—</span>
+      </td>
+    </tr>
+  </table>
+
+  <h2>2. Projection</h2>
+  <table class="form">
+    <tr><td>Screen</td><td><select id="screen"></select></td></tr>
+    <tr><td></td><td><button id="openProjection">Open projection window</button> <span class="small">then click inside it</span></td></tr>
+    <tr><td></td><td>
+      <label><input type="checkbox" id="mirror"> Mirror</label>
+      &nbsp; <label><input type="checkbox" id="blackout"> Black screen</label>
+    </td></tr>
+  </table>
+
+  <h2>3. Mode</h2>
+  <p>
+    <label><input type="radio" name="mode" value="fixed"> Fixed delay</label>
+    &nbsp; <label><input type="radio" name="mode" value="phrase"> Sentence by sentence</label>
+  </p>
+
+  <div id="fixedSettings">
+    <table class="form">
+      <tr><td>Delay</td><td><input type="range" id="delay" min="0" max="60" step="0.1"> <b><span id="delayValue"></span> s</b></td></tr>
+      <tr><td></td><td id="bufferInfo" class="small"></td></tr>
+    </table>
+  </div>
+
+  <div id="phraseSettings">
+    <p class="phrase"><span id="phraseState">—</span><br><span id="phraseHelp" class="small"></span></p>
+    <p>
+      <button id="forcePlay">Play now</button>
+      <button id="cancelPhrase">Discard</button>
+      <button id="stopEcho">Stop playback</button>
+    </p>
+    <table class="form">
+      <tr><td>Speech level</td><td><input type="range" id="threshold" min="-80" max="-5" step="1"> <span id="thresholdValue"></span> dB</td></tr>
+      <tr><td>Silence to end</td><td><input type="range" id="silence" min="0.3" max="5" step="0.1"> <span id="silenceValue"></span> s</td></tr>
+    </table>
+  </div>
+
+  <h2>Monitor</h2>
+  <table class="previews">
+    <tr>
+      <td><canvas id="livePreview"></canvas>Camera</td>
+      <td><canvas id="outputPreview"></canvas>Projection</td>
+    </tr>
+  </table>
+
+  <hr>
+
+  <details>
+    <summary>More settings</summary>
+    <table class="form">
+      <tr><td>Sound output</td><td><select id="audioOutput"></select></td></tr>
+      <tr><td>Lip sync</td><td><input type="range" id="avOffset" min="-500" max="500" step="10"> <span id="avOffsetValue"></span> ms</td></tr>
+      <tr><td>Shortest speech</td><td><input type="range" id="minVoice" min="0.05" max="1.5" step="0.05"> <span id="minVoiceValue"></span> s</td></tr>
+      <tr><td>Extra time before</td><td><input type="range" id="preroll" min="0" max="1.5" step="0.05"> <span id="prerollValue"></span> s</td></tr>
+      <tr><td>Extra time after</td><td><input type="range" id="tail" min="0" max="1.5" step="0.05"> <span id="tailValue"></span> s</td></tr>
+      <tr><td>Pause after playback</td><td><input type="range" id="guard" min="0" max="3" step="0.1"> <span id="guardValue"></span> s</td></tr>
+      <tr><td>Longest sentence</td><td><input type="range" id="maxPhrase" min="5" max="60" step="1"> <span id="maxPhraseValue"></span> s</td></tr>
+    </table>
+  </details>
+
+  <details>
+    <summary>Help</summary>
+    <div class="help">
+      <p><b>Getting started</b></p>
+      <ol>
+        <li>Choose the camera and the sound, click <b>Start</b>.</li>
+        <li>Choose the screen, click <b>Open projection window</b>, then click once inside that window to make it full screen.</li>
+        <li>Choose a mode.</li>
+      </ol>
+
+      <p><b>With the ATEM</b><br>
+      Choose the ATEM as <i>Camera</i> and as <i>Sound</i>. The camera's sound goes into the ATEM through HDMI and reaches the computer through the same USB cable. In the ATEM, the camera's sound must be switched on.</p>
+
+      <p><b>Modes</b><br>
+      <i>Fixed delay</i>: everything is shown again after a set time, continuously.<br>
+      <i>Sentence by sentence</i>: the person speaks; when they stop, their sentence is played back once, picture and sound. What is said during the playback is not recorded.</p>
+
+      <p><b>Buttons</b><br>
+      <i>Play now</i>: ends the sentence being recorded and plays it back right away. If nothing is being recorded, plays the last sentence again.<br>
+      <i>Discard</i>: throws away the sentence being recorded.<br>
+      <i>Stop playback</i>: stops the sentence being played back.</p>
+
+      <p><b>Settings</b><br>
+      <i>Level</i>: the bar moves with the sound. The red line is the speech level; above it, the bar turns black and it counts as speech.<br>
+      <i>Speech level</i>: set it just above the noise of the room.<br>
+      <i>Silence to end</i>: how long the person must be silent before the sentence is played back.<br>
+      <i>Lip sync</i>: only if voice and lips do not match; move until they do.<br>
+      <i>Shortest speech</i>: shorter sounds (a cough, a click) are ignored.<br>
+      <i>Extra time before / after</i>: keeps a moment before the first word and after the last one.<br>
+      <i>Pause after playback</i>: waiting time before listening again.<br>
+      <i>Longest sentence</i>: past this, the sentence is played back anyway.</p>
+
+      <p><b>Keyboard</b> (also in the projection window)</p>
+      <table class="keys">
+        <tr><td>Space</td><td>Play now</td></tr>
+        <tr><td>A</td><td>Discard</td></tr>
+        <tr><td>S</td><td>Stop playback</td></tr>
+        <tr><td>F / P</td><td>Fixed delay / Sentence by sentence</td></tr>
+        <tr><td>↑ / ↓</td><td>Delay ± 0.5 s, or speech level ± 1 dB</td></tr>
+        <tr><td>M</td><td>Mirror</td></tr>
+        <tr><td>N</td><td>Black screen</td></tr>
+      </table>
+    </div>
+  </details>
+
+</div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
