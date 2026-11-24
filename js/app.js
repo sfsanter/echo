@@ -238,20 +238,6 @@ function forcePlay() {
   }
 }
 
-function cancelPhrase() {
-  if (!state.running || settings.mode !== 'phrase') return;
-  state.cand = null;
-  if (state.phrase === 'speaking') setPhrase('listening');
-}
-
-function stopEcho() {
-  if (!state.running || settings.mode !== 'phrase') return;
-  if (state.phrase !== 'echo' && !state.echoVideo) return;
-  state.node.port.postMessage({ type: 'stop' });
-  state.echoVideo = null;
-  startGuard(state.lastFrame);
-}
-
 function onWorkletMessage(msg) {
   if (msg.type !== 'level') return;
   state.level = msg.db;
@@ -553,8 +539,6 @@ function handleKey(e) {
 
   switch (e.key) {
     case ' ': forcePlay(); break;
-    case 'a': case 'A': cancelPhrase(); break;
-    case 's': case 'S': stopEcho(); break;
     case 'f': case 'F': setMode('fixed'); break;
     case 'p': case 'P': setMode('phrase'); break;
     case 'm': case 'M': toggleMirror(); break;
@@ -590,9 +574,6 @@ function bindUi() {
   $('start').addEventListener('click', () => (state.running ? stop() : start()));
   $('openProjection').addEventListener('click', openProjection);
   $('forcePlay').addEventListener('click', forcePlay);
-  $('cancelPhrase').addEventListener('click', cancelPhrase);
-  $('stopEcho').addEventListener('click', stopEcho);
-
   const restartOnChange = (key) => (e) => {
     settings[key] = e.target.value;
     save();

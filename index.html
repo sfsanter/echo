@@ -51,11 +51,7 @@
 
   <div id="phraseSettings">
     <p class="phrase"><span id="phraseState">—</span><br><span id="phraseHelp" class="small"></span></p>
-    <p>
-      <button id="forcePlay">Play now</button>
-      <button id="cancelPhrase">Discard</button>
-      <button id="stopEcho">Stop playback</button>
-    </p>
+    <p><button id="forcePlay">Play now</button></p>
     <table class="form">
       <tr><td>Speech level</td><td><input type="range" id="threshold" min="-80" max="-5" step="1"> <span id="thresholdValue"></span> dB</td></tr>
       <tr><td>Silence to end</td><td><input type="range" id="silence" min="0.3" max="5" step="0.1"> <span id="silenceValue"></span> s</td></tr>
@@ -102,10 +98,8 @@
       <i>Fixed delay</i>: everything is shown again after a set time, continuously.<br>
       <i>Sentence by sentence</i>: the person speaks; when they stop, their sentence is played back once, picture and sound. What is said during the playback is not recorded.</p>
 
-      <p><b>Buttons</b><br>
-      <i>Play now</i>: ends the sentence being recorded and plays it back right away. If nothing is being recorded, plays the last sentence again.<br>
-      <i>Discard</i>: throws away the sentence being recorded.<br>
-      <i>Stop playback</i>: stops the sentence being played back.</p>
+      <p><b>Play now</b><br>
+      Ends the sentence being recorded and plays it back right away. If nothing is being recorded, plays the last sentence again.</p>
 
       <p><b>Settings</b><br>
       <i>Level</i>: the bar moves with the sound. The red line is the speech level; above it, the bar turns black and it counts as speech.<br>
@@ -120,8 +114,6 @@
       <p><b>Keyboard</b> (also in the projection window)</p>
       <table class="keys">
         <tr><td>Space</td><td>Play now</td></tr>
-        <tr><td>A</td><td>Discard</td></tr>
-        <tr><td>S</td><td>Stop playback</td></tr>
         <tr><td>F / P</td><td>Fixed delay / Sentence by sentence</td></tr>
         <tr><td>↑ / ↓</td><td>Delay ± 0.5 s, or speech level ± 1 dB</td></tr>
         <tr><td>M</td><td>Mirror</td></tr>

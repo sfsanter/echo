@@ -33,9 +33,6 @@ class DelayProcessor extends AudioWorkletProcessor {
       case 'play':
         this.play = { from: msg.from, length: msg.length, start: msg.start };
         break;
-      case 'stop':
-        this.play = null;
-        break;
     }
   }
 
