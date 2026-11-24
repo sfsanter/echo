@@ -43,6 +43,8 @@ table.form td { padding: 4px 10px 4px 0; vertical-align: middle; }
 table.form td:first-child { width: 150px; color: #333; }
 
 select { width: 340px; }
+select.short { width: 200px; }
+.sub { margin: 16px 0 2px; font-weight: bold; }
 input[type=range] { width: 240px; vertical-align: middle; }
 
 .meter {

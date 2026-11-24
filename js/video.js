@@ -256,6 +256,11 @@ export class Player {
     return this.current;
   }
 
+  // The decoded picture right after the current one, if already available.
+  peekNext() {
+    return this.queue.length ? this.queue[0] : null;
+  }
+
   clearImage() {
     if (this.current) this.current.close();
     this.current = null;

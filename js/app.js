@@ -21,6 +21,13 @@ const DEFAULTS = {
   guard: 0.5,
   maxPhrase: 45,
   avOffset: 0,
+  dissolve: 0.8,
+  slowEnd: 1,
+  waitMode: 'frozen',
+  waitStrength: 60,
+  waitFade: 2,
+  trailsMode: 'off',
+  trails: 70,
 };
 
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('echo-settings') || '{}') };
@@ -47,7 +54,10 @@ const state = {
   lastVoice: 0,
   echoEnd: 0,
   guardUntil: 0,
-  echoVideo: null,
+  echo: null,
+  hasFrozen: false,
+  frozenAt: 0,
+  composeKey: '',
   lastPhrase: null,
   screens: [],
   popup: null,
@@ -82,16 +92,145 @@ function tick() {
   const av = settings.avOffset / 1000;
 
   if (settings.mode === 'fixed') {
-    state.output = state.player.update(now - settings.delay - state.lag - av);
-  } else if (state.echoVideo) {
-    const e = state.echoVideo;
-    const elapsed = now - e.start / state.sr;
-    if (elapsed <= e.length / state.sr) {
-      state.output = state.player.update(e.v0 + elapsed);
-    } else {
-      state.echoVideo = null;
+    const frame = state.player.update(now - settings.delay - state.lag - av);
+    if (frame) composeFixed(frame);
+  } else {
+    composeSentence(now);
+  }
+}
+
+// The finished picture is built once per refresh in `comp`, then copied to every screen.
+const layers = { comp: null, clean: null, frozen: null };
+
+function ensureLayers(width, height) {
+  if (layers.comp && layers.comp.width === width && layers.comp.height === height) return;
+  for (const name of Object.keys(layers)) {
+    const c = document.createElement('canvas');
+    c.width = width;
+    c.height = height;
+    layers[name] = c;
+  }
+  state.hasFrozen = false;
+}
+
+function resetPicture() {
+  for (const c of Object.values(layers)) {
+    if (c) c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  }
+  state.hasFrozen = false;
+  state.echo = null;
+  state.composeKey = '';
+}
+
+function composeFixed(frame) {
+  ensureLayers(frame.displayWidth, frame.displayHeight);
+  const g = layers.comp.getContext('2d');
+  g.drawImage(frame, 0, 0, layers.comp.width, layers.comp.height);
+}
+
+// Video position inside the echo, with an optional slow-down to a stop at the end.
+function echoPosition(elapsed, dur) {
+  const s = Math.min(settings.slowEnd, dur);
+  if (s <= 0 || elapsed <= dur - s) return { pos: Math.min(elapsed, dur), slowing: false, end: dur };
+  const u = Math.min(elapsed - (dur - s), 2 * s);
+  return { pos: dur - s + u - (u * u) / (4 * s), slowing: true, end: dur + s };
+}
+
+function waitingAmount(until) {
+  if (!state.hasFrozen) return 0;
+  const fade = settings.waitFade;
+  const t = until - state.frozenAt;
+  return fade <= 0 ? 1 : Math.min(1, Math.max(0, t / fade));
+}
+
+function drawFrozen(g, w, h, amount, alpha) {
+  if (!state.hasFrozen) return;
+  const k = amount * (settings.waitStrength / 100);
+  g.globalAlpha = alpha;
+  switch (settings.waitMode) {
+    case 'dim': g.filter = `brightness(${1 - k})`; break;
+    case 'bw': g.filter = `grayscale(${k})`; break;
+    case 'blur': g.filter = `blur(${(k * 24 * w) / 1920}px)`; break;
+    case 'black': g.globalAlpha = alpha * (1 - k); break;
+  }
+  g.drawImage(layers.frozen, 0, 0, w, h);
+  g.filter = 'none';
+  g.globalAlpha = 1;
+}
+
+function composeSentence(now) {
+  const cfg = state.recorder.config;
+  if (!cfg) return;
+  ensureLayers(cfg.width, cfg.height);
+  const { width: w, height: h } = layers.comp;
+  const echo = state.echo;
+
+  let frame = null;
+  let next = null;
+  let blend = 0;
+  let echoAlpha = 0;
+  let transition = false;
+
+  if (echo && !echo.ended) {
+    const elapsed = now - echo.start;
+    if (elapsed >= 0) {
+      const p = echoPosition(elapsed, echo.dur);
+      if (elapsed >= p.end) {
+        freezeCurrent(now);
+        echo.ended = true;
+      } else {
+        const target = echo.v0 + p.pos;
+        frame = state.player.update(target);
+        if (p.slowing && frame) {
+          next = state.player.peekNext();
+          const t0 = frame.timestamp / 1e6;
+          const t1 = next ? next.timestamp / 1e6 : t0;
+          blend = t1 > t0 ? Math.min(1, Math.max(0, (target - t0) / (t1 - t0))) : 0;
+        }
+        echoAlpha = settings.dissolve > 0 ? Math.min(1, elapsed / settings.dissolve) : 1;
+        transition = echoAlpha < 1 || p.slowing;
+      }
     }
   }
+
+  const playing = echo && !echo.ended && (frame || now >= echo.start);
+  const trails =
+    settings.trails > 0 &&
+    ((settings.trailsMode === 'always' && playing) || (settings.trailsMode === 'transitions' && transition));
+
+  const amount = waitingAmount(playing ? echo.start : now);
+  const key = `${amount.toFixed(3)}|${state.hasFrozen}`;
+  if (!frame && !trails && key === state.composeKey) return;
+  state.composeKey = frame ? '' : key;
+
+  const c = layers.clean.getContext('2d');
+  c.fillStyle = '#000';
+  c.fillRect(0, 0, w, h);
+  if (!frame || echoAlpha < 1) drawFrozen(c, w, h, amount, 1);
+  if (frame) {
+    c.globalAlpha = echoAlpha;
+    c.drawImage(frame, 0, 0, w, h);
+    if (next && blend > 0) {
+      c.globalAlpha = echoAlpha * blend;
+      c.drawImage(next, 0, 0, w, h);
+    }
+    c.globalAlpha = 1;
+  }
+
+  const g = layers.comp.getContext('2d');
+  g.globalAlpha = trails ? 1 - settings.trails / 100 : 1;
+  g.drawImage(layers.clean, 0, 0);
+  g.globalAlpha = 1;
+}
+
+// Keeps the picture on screen as the frozen image until the next echo.
+function freezeCurrent(now) {
+  if (!layers.frozen) return;
+  const f = layers.frozen.getContext('2d');
+  f.drawImage(layers.clean, 0, 0);
+  state.hasFrozen = true;
+  state.frozenAt = now;
+  state.composeKey = '';
 }
 
 function drawFrame(canvas, frame, mirror) {
@@ -108,8 +247,8 @@ function drawFrame(canvas, frame, mirror) {
   g.fillStyle = '#000';
   g.fillRect(0, 0, w, h);
   if (!frame) return;
-  const fw = frame.displayWidth;
-  const fh = frame.displayHeight;
+  const fw = frame.displayWidth || frame.width;
+  const fh = frame.displayHeight || frame.height;
   const scale = Math.min(w / fw, h / fh);
   const dw = fw * scale;
   const dh = fh * scale;
@@ -121,7 +260,7 @@ function drawFrame(canvas, frame, mirror) {
 }
 
 function projectedFrame() {
-  return state.blackout ? null : state.output;
+  return state.running && !state.blackout ? layers.comp : null;
 }
 
 function drawProjection(canvas) {
@@ -224,8 +363,10 @@ function playSegment(from, to) {
   state.node.port.postMessage({ type: 'play', from, length, start });
   state.echoEnd = start + length;
   const v0 = frameToClock(from) - settings.avOffset / 1000;
+  if (state.echo && !state.echo.ended) freezeCurrent(clock());
+  state.player.clearImage();
   state.player.seek(v0);
-  state.echoVideo = { start, length, v0 };
+  state.echo = { start: start / sr, dur: length / sr, v0, ended: false };
   setPhrase('echo');
 }
 
@@ -251,10 +392,9 @@ function applyMode() {
   $('fixedSettings').hidden = settings.mode !== 'fixed';
   $('phraseSettings').hidden = settings.mode !== 'phrase';
   if (!state.running) return;
-  state.echoVideo = null;
   state.cand = null;
-  state.output = null;
   state.player.clearImage();
+  resetPicture();
   if (settings.mode === 'fixed') {
     sendDelay();
   } else {
@@ -438,7 +578,8 @@ function stop() {
   state.stream?.getTracks().forEach((t) => t.stop());
   state.ctx?.close();
   state.wakeLock?.release().catch(() => {});
-  Object.assign(state, { recorder: null, player: null, stream: null, ctx: null, node: null, output: null, echoVideo: null, wakeLock: null });
+  Object.assign(state, { recorder: null, player: null, stream: null, ctx: null, node: null, wakeLock: null });
+  resetPicture();
   drawFrame($('livePreview'), null, false);
   setStatus('Stopped');
 }
@@ -501,7 +642,10 @@ function updateBufferInfo() {
       : '';
 }
 
-const RANGES = ['delay', 'threshold', 'silence', 'minVoice', 'preroll', 'tail', 'guard', 'maxPhrase', 'avOffset'];
+const RANGES = [
+  'delay', 'threshold', 'silence', 'minVoice', 'preroll', 'tail', 'guard', 'maxPhrase', 'avOffset',
+  'dissolve', 'slowEnd', 'waitStrength', 'waitFade', 'trails',
+];
 
 function showRange(key) {
   const input = $(key);
@@ -516,6 +660,7 @@ function setRange(key, value) {
   settings[key] = Math.round(clamped * 100) / 100;
   input.value = settings[key];
   showRange(key);
+  state.composeKey = '';
   save();
   if (key === 'delay') sendDelay();
 }
@@ -566,6 +711,15 @@ function bindUi() {
   document.querySelectorAll('input[name=mode]').forEach((r) =>
     r.addEventListener('change', () => setMode(r.value)),
   );
+
+  for (const key of ['waitMode', 'trailsMode']) {
+    $(key).value = settings[key];
+    $(key).addEventListener('change', (e) => {
+      settings[key] = e.target.value;
+      state.composeKey = '';
+      save();
+    });
+  }
 
   $('mirror').checked = settings.mirror;
   $('mirror').addEventListener('change', toggleMirror);
