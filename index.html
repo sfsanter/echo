@@ -57,29 +57,20 @@
       <tr><td>Silence to end</td><td><input type="range" id="silence" min="0.3" max="5" step="0.1"> <span id="silenceValue"></span> s</td></tr>
     </table>
 
-    <p class="sub">Transitions <span class="small">(0 = off)</span></p>
     <table class="form">
-      <tr><td>Dissolve in</td><td><input type="range" id="dissolve" min="0" max="3" step="0.1"> <span id="dissolveValue"></span> s</td></tr>
-      <tr><td>Slow down at end</td><td><input type="range" id="slowEnd" min="0" max="3" step="0.1"> <span id="slowEndValue"></span> s</td></tr>
-      <tr><td>Waiting image</td><td>
-        <select id="waitMode" class="short">
-          <option value="frozen">Frozen</option>
-          <option value="dim">Darker</option>
-          <option value="bw">Black and white</option>
-          <option value="blur">Blurred</option>
+      <tr><td>Transition</td><td>
+        <select id="transition">
+          <option value="cut">None</option>
+          <option value="soft">Soft</option>
+          <option value="sleep">Falling asleep</option>
+          <option value="memory">Memory</option>
+          <option value="dream">Dream</option>
+          <option value="ghost">Ghost</option>
           <option value="black">Fade to black</option>
         </select>
       </td></tr>
-      <tr><td>&nbsp; strength</td><td><input type="range" id="waitStrength" min="0" max="100" step="5"> <span id="waitStrengthValue"></span> %</td></tr>
-      <tr><td>&nbsp; over</td><td><input type="range" id="waitFade" min="0" max="10" step="0.5"> <span id="waitFadeValue"></span> s</td></tr>
-      <tr><td>Trails</td><td>
-        <select id="trailsMode" class="short">
-          <option value="off">Off</option>
-          <option value="transitions">During transitions</option>
-          <option value="always">During the whole echo</option>
-        </select>
-      </td></tr>
-      <tr><td>&nbsp; amount</td><td><input type="range" id="trails" min="0" max="95" step="5"> <span id="trailsValue"></span> %</td></tr>
+      <tr><td></td><td id="transitionHelp" class="small"></td></tr>
+      <tr><td>Transition length</td><td><input type="range" id="transLength" min="0.3" max="3" step="0.1"> <span id="transLengthValue"></span> s</td></tr>
     </table>
   </div>
 
@@ -136,11 +127,9 @@
       <i>Pause after playback</i>: waiting time before listening again.<br>
       <i>Longest sentence</i>: past this, the sentence is played back anyway.</p>
 
-      <p><b>Transitions</b> (sentence by sentence)<br>
-      <i>Dissolve in</i>: the waiting image melts into the new echo. Keep it shorter than <i>Extra time before</i> so the first word is fully visible.<br>
-      <i>Slow down at end</i>: the echo slows down to a stop instead of freezing abruptly. The picture ends a little after the sound.<br>
-      <i>Waiting image</i>: how the last picture looks while the person speaks. <i>Strength</i> is how strong the effect gets, <i>over</i> is how long it takes.<br>
-      <i>Trails</i>: movements leave a fading trace. <i>Amount</i> is how long the trace stays.</p>
+      <p><b>Transition</b> (sentence by sentence)<br>
+      How the picture goes from one echo to the next. While the person speaks, the projection shows the last picture of the previous echo.<br>
+      <i>Transition length</i>: how long the change takes. Keep it short if the first word must be fully visible.</p>
 
       <p><b>Keyboard</b> (also in the projection window)</p>
       <table class="keys">
