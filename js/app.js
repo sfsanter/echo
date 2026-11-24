@@ -21,33 +21,8 @@ const DEFAULTS = {
   guard: 0.5,
   maxPhrase: 45,
   avOffset: 0,
-  transition: 'soft',
-  transLength: 1,
+  transLength: 0.5,
 };
-
-// Each style sets: dissolve into the echo, slow-down at its end, look of the waiting picture, trails.
-const TRANSITIONS = {
-  cut: { help: 'Plain cut: the echo starts and stops instantly.', dissolve: 0, slow: 0, wait: 'frozen', trails: 0 },
-  soft: { help: 'The echo melts in, and slows down to a stop at the end.', dissolve: 1, slow: 1, wait: 'frozen', trails: 0 },
-  sleep: { help: 'Like Soft, and the waiting picture slowly gets darker.', dissolve: 1, slow: 1, wait: 'dim', strength: 0.6, trails: 0 },
-  memory: { help: 'Like Soft, and the waiting picture slowly turns black and white.', dissolve: 1, slow: 1, wait: 'bw', strength: 1, trails: 0 },
-  dream: { help: 'Like Soft, and the waiting picture slowly blurs.', dissolve: 1, slow: 1, wait: 'blur', strength: 0.6, trails: 0 },
-  ghost: { help: 'Movements leave a fading trace while the echo appears and disappears.', dissolve: 1.5, slow: 1, wait: 'frozen', trails: 0.8 },
-  black: { help: 'Like Soft, and the waiting picture slowly fades to black.', dissolve: 1, slow: 1, wait: 'black', strength: 1, trails: 0 },
-};
-
-function fx() {
-  const t = TRANSITIONS[settings.transition] || TRANSITIONS.soft;
-  const len = settings.transLength;
-  return {
-    dissolve: t.dissolve * len,
-    slow: t.slow * len,
-    wait: t.wait,
-    strength: t.strength || 0,
-    waitFade: 3 * len,
-    trails: t.trails,
-  };
-}
 
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('echo-settings') || '{}') };
 const save = () => localStorage.setItem('echo-settings', JSON.stringify(settings));
@@ -75,7 +50,6 @@ const state = {
   guardUntil: 0,
   echo: null,
   hasFrozen: false,
-  frozenAt: 0,
   composeKey: '',
   lastPhrase: null,
   screens: [],
@@ -155,46 +129,25 @@ function echoPosition(elapsed, dur, slow) {
   return { pos: dur - s + u - (u * u) / (4 * s), slowing: true, end: dur + s };
 }
 
-function waitingAmount(until, fade) {
-  if (!state.hasFrozen) return 0;
-  const t = until - state.frozenAt;
-  return fade <= 0 ? 1 : Math.min(1, Math.max(0, t / fade));
-}
-
-function drawFrozen(g, w, h, amount, f) {
-  if (!state.hasFrozen) return;
-  const k = amount * f.strength;
-  switch (f.wait) {
-    case 'dim': g.filter = `brightness(${1 - k})`; break;
-    case 'bw': g.filter = `grayscale(${k})`; break;
-    case 'blur': g.filter = `blur(${(k * 24 * w) / 1920}px)`; break;
-    case 'black': g.globalAlpha = 1 - k; break;
-  }
-  g.drawImage(layers.frozen, 0, 0, w, h);
-  g.filter = 'none';
-  g.globalAlpha = 1;
-}
-
 function composeSentence(now) {
   const cfg = state.recorder.config;
   if (!cfg) return;
   ensureLayers(cfg.width, cfg.height);
   const { width: w, height: h } = layers.comp;
   const echo = state.echo;
-  const f = fx();
+  const len = settings.transLength;
 
   let frame = null;
   let next = null;
   let blend = 0;
   let echoAlpha = 0;
-  let transition = false;
 
   if (echo && !echo.ended) {
     const elapsed = now - echo.start;
     if (elapsed >= 0) {
-      const p = echoPosition(elapsed, echo.dur, f.slow);
+      const p = echoPosition(elapsed, echo.dur, len);
       if (elapsed >= p.end) {
-        freezeCurrent(now);
+        freezeCurrent();
         echo.ended = true;
       } else {
         const target = echo.v0 + p.pos;
@@ -205,24 +158,19 @@ function composeSentence(now) {
           const t1 = next ? next.timestamp / 1e6 : t0;
           blend = t1 > t0 ? Math.min(1, Math.max(0, (target - t0) / (t1 - t0))) : 0;
         }
-        echoAlpha = f.dissolve > 0 ? Math.min(1, elapsed / f.dissolve) : 1;
-        transition = echoAlpha < 1 || p.slowing;
+        echoAlpha = len > 0 ? Math.min(1, elapsed / len) : 1;
       }
     }
   }
 
-  const playing = echo && !echo.ended && (frame || now >= echo.start);
-  const trails = f.trails > 0 && transition;
-
-  const amount = waitingAmount(playing ? echo.start : now, f.waitFade);
-  const key = `${amount.toFixed(3)}|${state.hasFrozen}`;
-  if (!frame && !trails && key === state.composeKey) return;
+  const key = `frozen|${state.hasFrozen}`;
+  if (!frame && key === state.composeKey) return;
   state.composeKey = frame ? '' : key;
 
   const c = layers.clean.getContext('2d');
   c.fillStyle = '#000';
   c.fillRect(0, 0, w, h);
-  if (!frame || echoAlpha < 1) drawFrozen(c, w, h, amount, f);
+  if (state.hasFrozen && (!frame || echoAlpha < 1)) c.drawImage(layers.frozen, 0, 0, w, h);
   if (frame) {
     c.globalAlpha = echoAlpha;
     c.drawImage(frame, 0, 0, w, h);
@@ -233,19 +181,15 @@ function composeSentence(now) {
     c.globalAlpha = 1;
   }
 
-  const g = layers.comp.getContext('2d');
-  g.globalAlpha = trails ? 1 - f.trails : 1;
-  g.drawImage(layers.clean, 0, 0);
-  g.globalAlpha = 1;
+  layers.comp.getContext('2d').drawImage(layers.clean, 0, 0);
 }
 
 // Keeps the picture on screen as the frozen image until the next echo.
-function freezeCurrent(now) {
+function freezeCurrent() {
   if (!layers.frozen) return;
   const f = layers.frozen.getContext('2d');
   f.drawImage(layers.clean, 0, 0);
   state.hasFrozen = true;
-  state.frozenAt = now;
   state.composeKey = '';
 }
 
@@ -379,7 +323,7 @@ function playSegment(from, to) {
   state.node.port.postMessage({ type: 'play', from, length, start });
   state.echoEnd = start + length;
   const v0 = frameToClock(from) - settings.avOffset / 1000;
-  if (state.echo && !state.echo.ended) freezeCurrent(clock());
+  if (state.echo && !state.echo.ended) freezeCurrent();
   state.player.clearImage();
   state.player.seek(v0);
   state.echo = { start: start / sr, dur: length / sr, v0, ended: false };
@@ -727,18 +671,6 @@ function bindUi() {
   document.querySelectorAll('input[name=mode]').forEach((r) =>
     r.addEventListener('change', () => setMode(r.value)),
   );
-
-  const showTransition = () => {
-    $('transition').value = settings.transition;
-    $('transitionHelp').textContent = (TRANSITIONS[settings.transition] || TRANSITIONS.soft).help;
-  };
-  showTransition();
-  $('transition').addEventListener('change', (e) => {
-    settings.transition = e.target.value;
-    state.composeKey = '';
-    save();
-    showTransition();
-  });
 
   $('mirror').checked = settings.mirror;
   $('mirror').addEventListener('change', toggleMirror);

@@ -60,24 +60,10 @@
   </div>
 
   <h2>4. Transition</h2>
-  <p class="small">Used in <i>Sentence by sentence</i> mode: how the picture goes from one echo to the next.</p>
-  <div>
-    <table class="form">
-      <tr><td>Style</td><td>
-        <select id="transition">
-          <option value="cut">None</option>
-          <option value="soft">Soft</option>
-          <option value="sleep">Falling asleep</option>
-          <option value="memory">Memory</option>
-          <option value="dream">Dream</option>
-          <option value="ghost">Ghost</option>
-          <option value="black">Fade to black</option>
-        </select>
-      </td></tr>
-      <tr><td></td><td id="transitionHelp" class="small"></td></tr>
-      <tr><td>Length</td><td><input type="range" id="transLength" min="0.3" max="3" step="0.1"> <span id="transLengthValue"></span> s</td></tr>
-    </table>
-  </div>
+  <table class="form">
+    <tr><td>Length</td><td><input type="range" id="transLength" min="0" max="2" step="0.1"> <span id="transLengthValue"></span> s</td></tr>
+    <tr><td></td><td class="small">Sentence by sentence only. The echo blends in smoothly and slows to a stop, so the change is hard to notice. 0 = plain cut.</td></tr>
+  </table>
 
   <h2>Monitor</h2>
   <table class="previews">
@@ -133,8 +119,7 @@
       <i>Longest sentence</i>: past this, the sentence is played back anyway.</p>
 
       <p><b>Transition</b> (sentence by sentence)<br>
-      How the picture goes from one echo to the next. While the person speaks, the projection shows the last picture of the previous echo.<br>
-      <i>Length</i>: how long the change takes. Keep it short if the first word must be fully visible.</p>
+      While the person speaks, the projection holds the last picture of the previous echo. When the next echo starts, it blends in over the chosen length; when it ends, it slows to a stop over the same length. Keep it short so the first word is fully visible.</p>
 
       <p><b>Keyboard</b> (also in the projection window)</p>
       <table class="keys">
