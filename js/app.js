@@ -22,6 +22,7 @@ const DEFAULTS = {
   maxPhrase: 45,
   avOffset: 0,
   transLength: 0.5,
+  volume: 100,
 };
 
 const settings = { ...DEFAULTS, ...JSON.parse(localStorage.getItem('echo-settings') || '{}') };
@@ -33,6 +34,7 @@ const state = {
   running: false,
   ctx: null,
   node: null,
+  gain: null,
   stream: null,
   recorder: null,
   player: null,
@@ -499,15 +501,18 @@ async function start() {
       processorOptions: { bufferSeconds: BUFFER_SECONDS },
     });
     node.port.onmessage = (e) => onWorkletMessage(e.data);
+    const gain = ctx.createGain();
+    gain.gain.value = settings.volume / 100;
     source.connect(node);
-    node.connect(ctx.destination);
+    node.connect(gain);
+    gain.connect(ctx.destination);
 
     if (settings.outputDeviceId && ctx.setSinkId) {
       await ctx.setSinkId(settings.outputDeviceId).catch(() => showWarning('Sound output not found: using the Mac default output.'));
     }
     await ctx.resume();
 
-    Object.assign(state, { ctx, node, stream, sr: ctx.sampleRate, lag: null, output: null });
+    Object.assign(state, { ctx, node, gain, stream, sr: ctx.sampleRate, lag: null });
 
     const videoTrack = stream.getVideoTracks()[0];
     state.recorder = new VideoRecorder(videoTrack, clock, BUFFER_SECONDS, drawLive);
@@ -538,7 +543,7 @@ function stop() {
   state.stream?.getTracks().forEach((t) => t.stop());
   state.ctx?.close();
   state.wakeLock?.release().catch(() => {});
-  Object.assign(state, { recorder: null, player: null, stream: null, ctx: null, node: null, wakeLock: null });
+  Object.assign(state, { recorder: null, player: null, stream: null, ctx: null, node: null, gain: null, wakeLock: null });
   resetPicture();
   drawFrame($('livePreview'), null, false);
   setStatus('Stopped');
@@ -604,7 +609,7 @@ function updateBufferInfo() {
 
 const RANGES = [
   'delay', 'threshold', 'silence', 'minVoice', 'preroll', 'tail', 'guard', 'maxPhrase', 'avOffset',
-  'transLength',
+  'transLength', 'volume',
 ];
 
 function showRange(key) {
@@ -623,6 +628,7 @@ function setRange(key, value) {
   state.composeKey = '';
   save();
   if (key === 'delay') sendDelay();
+  if (key === 'volume' && state.gain) state.gain.gain.value = settings.volume / 100;
 }
 
 function toggleMirror() {

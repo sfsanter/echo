@@ -30,6 +30,7 @@
   <table class="form">
     <tr><td>Screen</td><td><select id="screen"></select></td></tr>
     <tr><td></td><td><button id="openProjection">Open projection window</button> <span class="small">then click inside it</span></td></tr>
+    <tr><td>Volume</td><td><input type="range" id="volume" min="0" max="100" step="1"> <b><span id="volumeValue"></span> %</b></td></tr>
     <tr><td></td><td>
       <label><input type="checkbox" id="mirror"> Mirror</label>
       &nbsp; <label><input type="checkbox" id="blackout"> Black screen</label>
@@ -117,6 +118,9 @@
       <i>Extra time before / after</i>: keeps a moment before the first word and after the last one.<br>
       <i>Pause after playback</i>: waiting time before listening again.<br>
       <i>Longest sentence</i>: past this, the sentence is played back anyway.</p>
+
+      <p><b>Volume</b><br>
+      Loudness of the echo on the speakers. 0 = silent, 100 = full.</p>
 
       <p><b>Transition</b> (sentence by sentence)<br>
       While the person speaks, the projection holds the last picture of the previous echo. When the next echo starts, it blends in over the chosen length; when it ends, it slows to a stop over the same length. Keep it short so the first word is fully visible.</p>
